@@ -2,32 +2,29 @@ using Assets.Scripts;
 using Assets.Scripts.Constans;
 using Assets.Scripts.Enums;
 using Assets.Scripts.Models;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.SocialPlatforms.Impl;
 
 public class SpawnManager : MonoBehaviour
 {
     public int minDistance;
     public int maxDistance;
     public GameObject portal;
-    public GameObject enemy;
+    public List<Wave> waves;
 
-    private float startDelay = 5.0f;
-    private float nextDelay = 1.2f;
     private LayoutScript _layoutScript;
-    private readonly List<GameObject> EnemyList = new();
+    private readonly List<Enemy> EnemyList = new();
 
     // Start is called before the first frame update
     public void Start()
     {
         _layoutScript = GameObject.Find("Plane").GetComponent<LayoutScript>();
-
-        PositionSemiRandom();
-        Instantiate(portal, transform.position, portal.transform.rotation); // need to add randomnes to rotation
-        Invoke(nameof(KeepSpawningEnemies), startDelay);
+        StartCoroutine(SpawnWaves());
     }
 
-    public List<GameObject> GetEnemies() => EnemyList;
+    public List<Enemy> GetEnemies() => EnemyList;
 
     // Update is called once per frame
     public void Update()
@@ -35,7 +32,12 @@ public class SpawnManager : MonoBehaviour
         
     }
 
-    private void PositionSemiRandom()
+    public void Remove(Enemy enemy)
+    {
+        EnemyList.Remove(enemy);
+    }
+
+    private (int, float, int) GetSemiRandomPosition()
     {
         var xDist = Random.Range(minDistance, maxDistance + 1);
         var zDist = Random.Range(minDistance, maxDistance + 1);
@@ -46,14 +48,38 @@ public class SpawnManager : MonoBehaviour
             0 + zDist :
             0 - zDist;
 
-        transform.position = new Vector3(xCord, portal.transform.position.y, zCord);
-        _layoutScript.Add(Tile.Portal, new Cord(xCord, zCord));
+        return (xCord, portal.transform.position.y, zCord);
     }
 
-    private void KeepSpawningEnemies()
+    private IEnumerator SpawnWaves()
     {
-        var newEnemy = Instantiate(enemy, transform.position, enemy.transform.rotation);
+        foreach(var wave in waves)
+        {
+            yield return new WaitForSeconds(wave.InitialDelay);
+            KeepSpawningEnemies(wave);
+        }
+    }
+
+    private void KeepSpawningEnemies(Wave wave)
+    {
+        var randompos = GetSemiRandomPosition();
+        var portalPos = new Vector3(randompos.Item1, randompos.Item2, randompos.Item3);
+
+        _layoutScript.Add(Tile.Portal, new Cord(randompos.Item1, randompos.Item3));
+        Instantiate(portal, portalPos, portal.transform.rotation);
+
+        var delay = 0f;
+        foreach(var enemy in wave.EnemyList)
+        {
+            delay += wave.SpawnDelay;
+            StartCoroutine(SpawnEnemy(enemy, portalPos, delay));
+        }
+    }
+
+    private IEnumerator SpawnEnemy(Enemy enemy, Vector3 position, float delay)
+    {
+        yield return new WaitForSeconds(delay);
+        var newEnemy = Instantiate(enemy, position, enemy.transform.rotation);
         EnemyList.Add(newEnemy);
-        Invoke(nameof(KeepSpawningEnemies), nextDelay);
     }
 }

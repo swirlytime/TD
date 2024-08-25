@@ -1,13 +1,13 @@
 using System.Collections;
-using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
-using UnityEngine.ProBuilder.Shapes;
 
 public class TowerScript : MonoBehaviour
 {
     public float range;
     public GameObject arrow;
+    public float Damage;
+    public float ReloadTime;
 
     private Component cone;
     private SpawnManager spawnManager;
@@ -15,23 +15,36 @@ public class TowerScript : MonoBehaviour
     void Start()
     {
         spawnManager = GameObject.Find("SpawnManager").GetComponent<SpawnManager>();
+        StartCoroutine(WaitAndShoot());
     }
 
-    // Update is called once per frame
-    void Update()
+    private IEnumerator WaitAndShoot()
     {
-        //TODO: Add delay
+        while (!GameManager.Instance.isDead)
+        {
+            var closest = GetClosest();
+            if (closest != null && (closest.transform.position - transform.position).magnitude <= range)
+                Shoot(closest);
+
+            yield return new WaitForSeconds(ReloadTime);
+        }
+    }
+
+    private Enemy GetClosest()
+    {
         var enemies = spawnManager.GetEnemies();
         var ordered = enemies.OrderBy(e => (e.transform.position - transform.position).magnitude);
         var closest = ordered.FirstOrDefault();
 
-        if (closest != null && (closest.transform.position - transform.position).magnitude <= range)
-            Shoot(closest);
+        return closest;
     }
 
-    private void Shoot(GameObject target)
+    private void Shoot(Enemy target)
     {
+        Debug.Log("Shooting");
         var newArrow = Instantiate(arrow, transform.position, transform.rotation);
-        newArrow.GetComponent<ArrowScript>().Target = target;
+        var script = newArrow.GetComponent<ArrowScript>();
+        script.Target = target;
+        script.Damage = Damage;
     }
 }

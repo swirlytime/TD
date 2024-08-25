@@ -1,11 +1,10 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 
 public class ArrowScript : MonoBehaviour
 {
-    public GameObject Target;
-    public float speed;
+    public Enemy Target;
+    public float Damage;
+    public float Speed;
 
     // Start is called before the first frame update
     void Start()
@@ -15,30 +14,20 @@ public class ArrowScript : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
+        if (Target == null)
+            Destroy(gameObject);
         transform.LookAt(Target.transform.position);
         var direction = (Target.transform.position - transform.position).normalized;
-        transform.position += direction * speed * Time.deltaTime;
-    }
-
-    private void OnCollisionEnter(Collision collision)
-    {
-        Debug.Log("mby?");
-        if (collision.gameObject.CompareTag("Enemy"))
-        {
-            Destroy(collision.gameObject);
-            Destroy(gameObject);
-        }
+        transform.position += direction * Speed * Time.deltaTime;
     }
 
     private void OnTriggerEnter(Collider other)
     {
-        Debug.Log("Aaaaa");
-
         if (other.CompareTag("Enemy"))
         {
-            Debug.Log("Bbbb");
-            Destroy(other);
-
+            Debug.Log("Dealing damage");
+            Target.TakeDamage(Damage);
+            Destroy(gameObject);
         }
     }
 }
